@@ -7,17 +7,18 @@ var config = {
     SIM_RESOLUTION: 256,
     DYE_RESOLUTION: 1024,
     CAPTURE_RESOLUTION: 512,
-    DENSITY_DISSIPATION: 1.0,
-    VELOCITY_DISSIPATION: 0.3,
-    PRESSURE: 0.6,
+    DENSITY_DISSIPATION: 1.5,
+    VELOCITY_DISSIPATION: 0.5,
+    PRESSURE: 0.1,
     PRESSURE_ITERATIONS: 10,
-    CURL: 15,
-    RADIUS_MIN: 0.01,
-    RADIUS_RANGE: 0.01,
-    SPLAT_FORCE: 7000,
-    SPLAT_BIAS: 20,
-    BROWN_BIAS: 7.5,
+    CURL: 8,
+    RADIUS_MIN: 0.03,
+    RADIUS_RANGE: 0.07,
+    SPLAT_FORCE: 800,
+    SPLAT_BIAS: 50,
+    BROWN_BIAS: 5.5,
     FREQUENCY: 0.1,
+    COLORFUL: false,
     SHADING: false,
     PAUSED: false,
     BACK_COLOR: { r: 0, g: 0, b: 0 },
@@ -141,11 +142,12 @@ function startGUI () {
     gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
     gui.add(config, 'CURL', 0, 50).name('curl').step(1);
     gui.add(config, 'RADIUS_MIN', 0.001, 0.05).name('radius minimum');
-    gui.add(config, 'RADIUS_RANGE',0.001, 0.1).name('radius range');
-    gui.add(config, 'SPLAT_FORCE', 100,20000).name('splat force');
-    gui.add(config, 'SPLAT_BIAS', 10,150).name('splat volume');
+    gui.add(config, 'RADIUS_RANGE',0.001, 0.15).name('radius range');
+    gui.add(config, 'SPLAT_FORCE', 100,8000).name('splat force');
+    gui.add(config, 'SPLAT_BIAS', 1,100).name('splat volume');
     gui.add(config, 'BROWN_BIAS', 1,20).name('brown activity');
     gui.add(config, 'FREQUENCY', 0,1).name('frequency');
+    gui.add(config, 'COLORFUL').name('colorful');
     gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
     gui.add(config, 'PAUSED').name('paused').listen();
 
@@ -449,7 +451,7 @@ function update () {
         { initFramebuffers(); }
     if (!config.PAUSED) {
         if (Math.random()<(Math.pow(config.FREQUENCY,2.0))) {
-            splat(Math.random(),Math.random(),Math.random()*100*config.SPLAT_BIAS,
+            splat(Math.random(),Math.random(),(Math.random()*0.9+0.1)*10*config.SPLAT_BIAS,
             config.RADIUS_MIN/100+Math.random()*config.RADIUS_RANGE/100);
             // background += 0.001;
         }
@@ -573,8 +575,12 @@ function splat(x,y,volume,radius) {
     gl.uniform1i(splatColorProgram.uniforms.uTarget, dye.read.attach(0));
     gl.uniform2f(splatColorProgram.uniforms.point, x, y);
     gl.uniform1f(splatColorProgram.uniforms.radius,radius);
-    gl.uniform3f(splatColorProgram.uniforms.color,volume,volume,volume);
-    // gl.uniform3f(splatColorProgram.uniforms.color,Math.random()*config.SPLAT_BIAS,Math.random()*config.SPLAT_BIAS,Math.random()*config.SPLAT_BIAS);
+    if (config.COLORFUL) {
+        gl.uniform3f(splatColorProgram.uniforms.color,Math.random()*volume,Math.random()*volume,Math.random()*volume);
+    }
+    else {
+        gl.uniform3f(splatColorProgram.uniforms.color,volume,volume,volume);
+    }
     blit(dye.write.fbo);
     dye.swap();
 }
@@ -595,7 +601,7 @@ function applyBrown() {
 canvas.addEventListener('mousedown', function (e) {
     var posX = scaleByPixelRatio(e.offsetX);
     var posY = scaleByPixelRatio(e.offsetY);
-    splat(posX/canvas.width,1.0-posY/canvas.height,Math.random()*100*config.SPLAT_BIAS,
+    splat(posX/canvas.width,1.0-posY/canvas.height,(Math.random()*0.9+0.1)*10*config.SPLAT_BIAS,
     config.RADIUS_MIN/100+Math.random()*config.RADIUS_RANGE/100);
 });
 
