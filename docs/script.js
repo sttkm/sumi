@@ -7,17 +7,17 @@ var config = {
     SIM_RESOLUTION: 256,
     DYE_RESOLUTION: 1024,
     CAPTURE_RESOLUTION: 512,
-    DENSITY_DISSIPATION: 1.5,
-    VELOCITY_DISSIPATION: 0.5,
+    DENSITY_DISSIPATION: 0.6,
+    VELOCITY_DISSIPATION: 0.4,
     PRESSURE: 0.1,
     PRESSURE_ITERATIONS: 10,
-    CURL: 8,
-    RADIUS_MIN: 0.03,
-    RADIUS_RANGE: 0.07,
+    CURL: 3,
+    RADIUS_MIN: 0.005,
+    RADIUS_RANGE: 0.03,
     SPLAT_FORCE: 800,
-    SPLAT_BIAS: 50,
+    SPLAT_BIAS: 20,
     BROWN_BIAS: 5.5,
-    FREQUENCY: 0.1,
+    FREQUENCY: 0.12,
     COLORFUL: false,
     SHADING: false,
     PAUSED: false,
@@ -137,13 +137,13 @@ function startGUI () {
     var gui = new dat.GUI({ width: 300 });
     gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name('quality').onFinishChange(initFramebuffers);
     gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
-    gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
-    gui.add(config, 'VELOCITY_DISSIPATION', 0, 2.0).name('velocity diffusion');
+    gui.add(config, 'DENSITY_DISSIPATION', 0, 3.0).name('density diffusion');
+    gui.add(config, 'VELOCITY_DISSIPATION', 0, 1.5).name('velocity diffusion');
     gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
     gui.add(config, 'CURL', 0, 50).name('curl').step(1);
     gui.add(config, 'RADIUS_MIN', 0.001, 0.05).name('radius minimum');
     gui.add(config, 'RADIUS_RANGE',0.001, 0.15).name('radius range');
-    gui.add(config, 'SPLAT_FORCE', 100,8000).name('splat force');
+    gui.add(config, 'SPLAT_FORCE', 100,5000).name('splat force');
     gui.add(config, 'SPLAT_BIAS', 1,100).name('splat volume');
     gui.add(config, 'BROWN_BIAS', 1,20).name('brown activity');
     gui.add(config, 'FREQUENCY', 0,1).name('frequency');

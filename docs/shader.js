@@ -99,7 +99,7 @@ var brownShaderSource = `
                      dot( random(i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
   }
   void main() {
-    vec2 brown = vec2(noise((vUv*a1+a2)*30.0),noise((vUv*b1+b2)*30.0));
+    vec2 brown = vec2(noise((vUv*a1+a2)*100.0),noise((vUv*b1+b2)*100.0));
     vec2 base = texture2D(uVelocity,vUv).xy;
     gl_FragColor = vec4(base+brown*bias,0.0,1.0);
   }
