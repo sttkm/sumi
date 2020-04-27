@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="Cache-Control" content="no-cache">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+        <title>sumi</title>
+        <meta name="description" content="sumi diffuision">
+
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="sumi">
+        <meta property="og:description" content="sumi diffusion">
+
+        <script type="text/javascript" src="dat.gui.min.js"></script>
+        <style>
+            html, body {
+                overflow: hidden;
+                background-color: #000;
+            }
+
+            body {
+                margin: 0;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+
+            canvas {
+                width: 100%;
+                height: 100%;
+            }
+
+            .dg {
+                opacity: 0.9;
+            }
+
+            .dg .property-name {
+                overflow: visible;
+            }
+            }
+        </style>
+        <script>
+            window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+            ga('create', 'UA-105392568-1', 'auto');
+            ga('send', 'pageview');
+        </script>
+        <script async src="https://www.google-analytics.com/analytics.js"></script>
+    </head>
+    <body>
+        <canvas></canvas>
+        <script src="./shader.js"></script>
+        <script src="./script.js"></script>
+    </body>
+</html>
