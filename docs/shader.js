@@ -57,20 +57,15 @@ var displayShaderSource = `
   }
   void main () {
     vec3 c = 1.0-texture2D(uTexture, vUv).rgb;
-    #ifdef SHADING
-    vec3 lc = texture2D(uTexture, vL).rgb;
-    vec3 rc = texture2D(uTexture, vR).rgb;
-    vec3 tc = texture2D(uTexture, vT).rgb;
-    vec3 bc = texture2D(uTexture, vB).rgb;
-    float dx = length(rc) - length(lc);
-    float dy = length(tc) - length(bc);
-    vec3 n = normalize(vec3(dx, dy, length(texelSize)));
-    vec3 l = vec3(0.0, 0.0, 1.0);
-    float diffuse = clamp(dot(n, l) + 0.7, 0.7, 1.0);
-    c *= diffuse;
+    #ifdef REVERSE
+    c = 1.0-c;
     #endif
     float a = max(c.r, max(c.g, c.b));
+    #ifdef REVERSE
+    gl_FragColor = vec4(background+(1.0-background)*c,1.0);
+    #else
     gl_FragColor = vec4((1.0-background)*c,1.0);
+    #endif
   }
 `;
 
@@ -99,7 +94,7 @@ var brownShaderSource = `
                      dot( random(i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
   }
   void main() {
-    vec2 brown = vec2(noise((vUv*a1+a2)*100.0),noise((vUv*b1+b2)*100.0));
+    vec2 brown = vec2(noise((vUv*a1+a2)*200.0),noise((vUv*b1+b2)*200.0));
     vec2 base = texture2D(uVelocity,vUv).xy;
     gl_FragColor = vec4(base+brown*bias,0.0,1.0);
   }
@@ -114,14 +109,34 @@ var splatShaderSource = `
   uniform vec2 point;
   uniform float bias;
   uniform float radius;
+  uniform float a1;
+  uniform float a2;
+  uniform float b1;
+  uniform float b2;
+  uniform float brown_bias;
+  vec2 random(vec2 st) {
+    st = vec2( dot(st,vec2(127.1,311.7)),
+              dot(st,vec2(269.5,183.3)) );
+    return 2.0*fract(sin(st)*43758.5453123) - 1.0;
+  }
+  float noise(vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+    vec2 u = f*f*(3.0-2.0*f);
+    return mix( mix( dot( random(i + vec2(0.0,0.0) ), f - vec2(0.0,0.0) ),
+                     dot( random(i + vec2(1.0,0.0) ), f - vec2(1.0,0.0) ), u.x),
+                mix( dot( random(i + vec2(0.0,1.0) ), f - vec2(0.0,1.0) ),
+                     dot( random(i + vec2(1.0,1.0) ), f - vec2(1.0,1.0) ), u.x), u.y);
+  }
   void main () {
     vec2 p = vUv-point;
     p.x *= aspectRatio;
     float dist = dot(p,p);
-    p /= sqrt(dist);
     float splat = exp(-dist/radius);
+    p /= sqrt(dist);
     vec2 base = texture2D(uVelocity, vUv).xy;
-    gl_FragColor = vec4(base + bias*splat*p,0.0,1.0);
+    vec2 brown = vec2(noise((vUv*a1+a2)*200.0),noise((vUv*b1+b2)*200.0));
+    gl_FragColor = vec4(base + bias*splat*(p+brown*brown_bias),0.0,1.0);
   }
 `;
 
@@ -137,7 +152,8 @@ var splatColorShaderSource = `
   void main () {
     vec2 p = vUv - point.xy;
     p.x *= aspectRatio;
-    float splat = exp(-dot(p, p) / radius);
+    float dist = dot(p,p);
+    float splat = exp(-dist / radius);
     vec3 base = texture2D(uTarget, vUv).xyz;
     gl_FragColor = vec4(base + pow(splat,2.0)*color, 1.0);
   }

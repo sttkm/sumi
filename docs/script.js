@@ -4,26 +4,39 @@ var canvas = document.getElementsByTagName('canvas')[0];
 resizeCanvas();
 
 var config = {
-    SIM_RESOLUTION: 256,
+    SIM_RESOLUTION: 512,
     DYE_RESOLUTION: 1024,
     CAPTURE_RESOLUTION: 512,
-    DENSITY_DISSIPATION: 0.6,
-    VELOCITY_DISSIPATION: 0.4,
-    PRESSURE: 0.1,
+    DENSITY_DISSIPATION: 0.15,
+    VELOCITY_DISSIPATION: 0.003,
+    PRESSURE: 0.0,
     PRESSURE_ITERATIONS: 10,
-    CURL: 3,
+    CURL: 0,
     RADIUS_MIN: 0.005,
-    RADIUS_RANGE: 0.03,
-    SPLAT_FORCE: 800,
-    SPLAT_BIAS: 20,
-    BROWN_BIAS: 5.5,
-    FREQUENCY: 0.12,
+    RADIUS_RANGE: 0.01,
+    SPLAT_FORCE: 1800,
+    SPLAT_BIAS: 5,
+    SPLAT_BROWN: 1.1,
+    BROWN_BIAS: 0.8,
+    FREQUENCY: 0.07,
     COLORFUL: false,
-    SHADING: false,
+    REVERSE: false,
     PAUSED: false,
-    BACK_COLOR: { r: 0, g: 0, b: 0 },
-    TRANSPARENT: false,
+    BACKGROUND: 0.02,
 }
+
+var sim_resolutions = [512,256,256,256,512];
+var density_diffusions = [0.15,0.9,0.013,0.013,0.05];
+var velocity_diffusions = [0.003,0.2,0.01,0.075,0.75];
+var curls = [0,3,10,15,50];
+var radius_mins = [0.01,0.035,0.01,0.01,0.01];
+var radius_ranges = [0.01,0.065,0.09,0.09,0.14];
+var splat_forces = [1800,1600,800,800,800];
+var splat_biass = [10,15,1,2,1.5];
+var splat_browns = [1.1,1.5,1.5,0.85,1.5];
+var brown_biass = [0.8,5.5,0.3,0.3,0.3];
+var colorfuls = [false,false,false,true,true];
+var frequencys = [0.07,0.4,0.1,0.2,0.2];
 
 var pointers = [];
 
@@ -36,9 +49,6 @@ if (isMobile()) {
 }
 if (!ext.supportLinearFiltering) {
     config.DYE_RESOLUTION = 512;
-    config.SHADING = false;
-    config.BLOOM = false;
-    config.SUNRAYS = false;
 }
 
 startGUI();
@@ -136,20 +146,22 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
 function startGUI () {
     var gui = new dat.GUI({ width: 300 });
     gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name('quality').onFinishChange(initFramebuffers);
-    gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
-    gui.add(config, 'DENSITY_DISSIPATION', 0, 3.0).name('density diffusion');
-    gui.add(config, 'VELOCITY_DISSIPATION', 0, 1.5).name('velocity diffusion');
+    gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 , '512': 512}).name('sim resolution').listen().onFinishChange(initFramebuffers);
+    gui.add(config, 'DENSITY_DISSIPATION', 0, 2.0).name('density diffusion').listen();
+    gui.add(config, 'VELOCITY_DISSIPATION', 0, 1.5).name('velocity diffusion').listen();
     gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
-    gui.add(config, 'CURL', 0, 50).name('curl').step(1);
-    gui.add(config, 'RADIUS_MIN', 0.001, 0.05).name('radius minimum');
-    gui.add(config, 'RADIUS_RANGE',0.001, 0.15).name('radius range');
-    gui.add(config, 'SPLAT_FORCE', 100,5000).name('splat force');
-    gui.add(config, 'SPLAT_BIAS', 1,100).name('splat volume');
-    gui.add(config, 'BROWN_BIAS', 1,20).name('brown activity');
-    gui.add(config, 'FREQUENCY', 0,1).name('frequency');
-    gui.add(config, 'COLORFUL').name('colorful');
-    gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
+    gui.add(config, 'CURL', 0, 50).name('curl').step(1).listen();
+    gui.add(config, 'RADIUS_MIN', 0.001, 0.05).name('radius minimum').listen();
+    gui.add(config, 'RADIUS_RANGE',0.0, 0.15).name('radius range').listen();
+    gui.add(config, 'SPLAT_FORCE', 100,2000).name('splat force').listen();
+    gui.add(config, 'SPLAT_BIAS', 1,15).name('splat volume').listen();
+    gui.add(config, 'SPLAT_BROWN', 0.0,1.5).name('splat brown').listen();
+    gui.add(config, 'BROWN_BIAS', 0,20).name('brown activity').listen();
+    gui.add(config, 'FREQUENCY', 0,1).name('frequency').listen();
+    gui.add(config, 'COLORFUL').name('colorful').listen();
+    gui.add(config, 'REVERSE').name('reverse').listen().onFinishChange(updateKeywords);
     gui.add(config, 'PAUSED').name('paused').listen();
+    gui.add(config, 'BACKGROUND',0.0,1.0).name('background').listen();
 
     gui.close();
 }
@@ -431,7 +443,7 @@ function createTextureAsync (url) {
 
 function updateKeywords () {
     var displayKeywords = [];
-    if (config.SHADING) { displayKeywords.push("SHADING"); }
+    if (config.REVERSE) { displayKeywords.push("REVERSE"); }
     displayMaterial.setKeywords(displayKeywords);
 }
 
@@ -441,7 +453,6 @@ updateKeywords();
 initFramebuffers();
 
 var lastUpdateTime = Date.now();
-var background = 0.02;
 
 update();
 
@@ -451,9 +462,9 @@ function update () {
         { initFramebuffers(); }
     if (!config.PAUSED) {
         if (Math.random()<(Math.pow(config.FREQUENCY,2.0))) {
-            splat(Math.random(),Math.random(),(Math.random()*0.9+0.1)*10*config.SPLAT_BIAS,
+            splat(Math.random(),Math.random(),(Math.random()*0.7+0.3)*config.SPLAT_BIAS,
             config.RADIUS_MIN/100+Math.random()*config.RADIUS_RANGE/100);
-            // background += 0.001;
+            // config.BACKGROUND += 0.001;
         }
         step(dt); }
     applyBrown();
@@ -551,9 +562,7 @@ function step (dt) {
 function drawDisplay () {
     displayMaterial.bind();
     gl.viewport(0, 0,gl.drawingBufferWidth,gl.drawingBufferHeight);
-    if (config.SHADING)
-        { gl.uniform2f(displayMaterial.uniforms.texelSize, 1.0 /gl.drawingBufferWidth,1.0 /gl.drawingBufferHeight); }
-    gl.uniform1f(displayMaterial.uniforms.background,background);
+    gl.uniform1f(displayMaterial.uniforms.background,config.BACKGROUND);
     gl.uniform1f(displayMaterial.uniforms.uTexture, dye.read.attach(0));
     blit(null);
 }
@@ -564,8 +573,13 @@ function splat(x,y,volume,radius) {
     gl.uniform1i(splatProgram.uniforms.uVelocity, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point,x,y);
-    gl.uniform1f(splatProgram.uniforms.bias,config.SPLAT_FORCE);
+    gl.uniform1f(splatProgram.uniforms.bias,(Math.random()*0.7+0.3)*config.SPLAT_FORCE);
     gl.uniform1f(splatProgram.uniforms.radius,radius);
+    gl.uniform1f(splatProgram.uniforms.a1,Math.random());
+    gl.uniform1f(splatProgram.uniforms.a2,Math.random());
+    gl.uniform1f(splatProgram.uniforms.b1,Math.random());
+    gl.uniform1f(splatProgram.uniforms.b2,Math.random());
+    gl.uniform1f(splatProgram.uniforms.brown_bias,config.SPLAT_BROWN);
     blit(velocity.write.fbo);
     velocity.swap();
 
@@ -576,7 +590,8 @@ function splat(x,y,volume,radius) {
     gl.uniform2f(splatColorProgram.uniforms.point, x, y);
     gl.uniform1f(splatColorProgram.uniforms.radius,radius);
     if (config.COLORFUL) {
-        gl.uniform3f(splatColorProgram.uniforms.color,Math.random()*volume,Math.random()*volume,Math.random()*volume);
+        var color = hsv2rgb(Math.random()*360,1.0,volume);
+        gl.uniform3f(splatColorProgram.uniforms.color,color[0],color[1],color[2]);
     }
     else {
         gl.uniform3f(splatColorProgram.uniforms.color,volume,volume,volume);
@@ -598,12 +613,69 @@ function applyBrown() {
     velocity.swap();
 }
 
+function hsv2rgb(H,S,V) {
+    var C = V * S;
+    var Hp = H / 60;
+    var X = C * (1 - Math.abs(Hp % 2 - 1));
+    var R, G, B;
+    if (0 <= Hp && Hp < 1) {[R,G,B]=[C,X,0]};
+    if (1 <= Hp && Hp < 2) {[R,G,B]=[X,C,0]};
+    if (2 <= Hp && Hp < 3) {[R,G,B]=[0,C,X]};
+    if (3 <= Hp && Hp < 4) {[R,G,B]=[0,X,C]};
+    if (4 <= Hp && Hp < 5) {[R,G,B]=[X,0,C]};
+    if (5 <= Hp && Hp < 6) {[R,G,B]=[C,0,X]};
+    var m = V - C;
+    [R, G, B] = [R+m, G+m, B+m];
+    return [R ,G, B];
+}
+
 canvas.addEventListener('mousedown', function (e) {
     var posX = scaleByPixelRatio(e.offsetX);
     var posY = scaleByPixelRatio(e.offsetY);
-    splat(posX/canvas.width,1.0-posY/canvas.height,(Math.random()*0.9+0.1)*10*config.SPLAT_BIAS,
+    splat(posX/canvas.width,1.0-posY/canvas.height,(Math.random()*0.7+0.3)*config.SPLAT_BIAS,
     config.RADIUS_MIN/100+Math.random()*config.RADIUS_RANGE/100);
 });
+
+window.addEventListener('keydown', function (e) {
+    if (e.key === '1')
+        { changePreset(0); }
+    if (e.key === '2')
+        { changePreset(1); }
+    if (e.key === '3')
+        { changePreset(2); }
+    if (e.key === '4')
+        { changePreset(3); }
+    if (e.key === '5')
+        { changePreset(4); }
+    if (e.key === 'r') {
+        config.REVERSE = !config.REVERSE;
+        updateKeywords();
+    }
+    if (e.key === 'c') {
+        dye = null;
+        velocity = null;
+        initFramebuffers();
+    }
+    if (e.key === 'p') {
+        config.PAUSED = !config.PAUSED;
+    }
+});
+
+function changePreset(num) {
+    config.SIM_RESOLUTION = sim_resolutions[num];
+    config.DENSITY_DISSIPATION = density_diffusions[num];
+    config.VELOCITY_DISSIPATION = velocity_diffusions[num];
+    config.CURL = curls[num];
+    config.RADIUS_MIN = radius_mins[num];
+    config.RADIUS_RANGE = radius_ranges[num];
+    config.SPLAT_FORCE = splat_forces[num];
+    config.SPLAT_BIAS = splat_biass[num];
+    config.SPLAT_BROWN = splat_browns[num];
+    config.BROWN_BIAS = brown_biass[num];
+    config.COLORFUL = colorfuls[num];
+    config.FREQUENCY = frequencys[num];
+    updateKeywords();
+}
 
 function getResolution (resolution) {
     var aspectRatio = gl.drawingBufferWidth / gl.drawingBufferHeight;
